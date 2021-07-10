@@ -10,10 +10,13 @@ sc = MinMaxScaler(feature_range=(0, 1))
 app = Flask(__name__)
 
 
+global model
+model = keras.models.load_model("./modelRNN/rnn_enrgy_model.h5")
+
+
 @app.route('/', methods=['GET'])
 def hello_word():
-
-    return "hello world"
+    return "Hello world"
 
 
 @app.route('/predictionsAPI', methods=['POST'])
@@ -22,32 +25,36 @@ def Predict():
     dataPath = "./data/" + dataCSV.filename
     dataCSV.save(dataPath)
 
-    inputs = pd.read_csv("data/testData.csv")
-    inputs = np.array(inputs["0"].values)
-    global model
-    model = keras.models.load_model('C:/Users/dell/Desktop/output')
-    # scallingFit = pd.read_csv('C:/Users/dell/Desktop/scallingFit.csv')
-    # scallingFit = np.array(inputs["0"].values)
-    # sc.fit_transform(scallingFit)
-    # We need to Reshape
-    inputs = inputs.reshape(-1, 1)
-    # Normalize the Dataset
-    #inputs = sc.transform(inputs)
-    X_test = []
-    for i in range(60, 160):
-        X_test.append(inputs[i-60:i])
+    scaler = MinMaxScaler()
 
-    # Convert into Numpy Array
-    X_test = np.array(X_test)
-    # Reshape before Passing to Network
-    X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], 1))
+    inputs = pd.read_csv(dataPath, header=0,
+                         infer_datetime_format=True, parse_dates=['datetime'], index_col=['datetime'])
+    scaler.fit(inputs)
+    inputs = scaler.transform(inputs)
 
-    predicted = model.predict(X_test)
-    # Do inverse Transformation to get Values
-    #predicted_MG = sc.inverse_transform(predicted)
-    predicted = [str(x[0]) for x in predicted]
+    n_features = 1
+    n_input = len(inputs)
 
-    return Response(json.dumps(predicted[:7]))
+    test_predictions = []
+
+    first_eval_batch = inputs
+    current_batch = first_eval_batch.reshape((1, n_input, n_features))
+
+    for i in range(0, 7):
+
+        # get the prediction value for the first batch
+        current_pred = model.predict(current_batch)[0]
+
+        # append the prediction into the array
+        test_predictions.append(current_pred)
+
+        # use the prediction to update the batch and remove the first value
+        current_batch = np.append(current_batch[:, 1:, :], [
+                                  [current_pred]], axis=1)
+
+    test_predictions = scaler.inverse_transform(test_predictions)
+    test_predictions = [str(x[0]) for x in test_predictions]
+    return Response(json.dumps(test_predictions))
 
 
 if __name__ == '__main__':
