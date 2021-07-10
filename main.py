@@ -55,7 +55,3 @@ def Predict():
     test_predictions = scaler.inverse_transform(test_predictions)
     test_predictions = [str(x[0]) for x in test_predictions]
     return Response(json.dumps(test_predictions))
-
-
-if __name__ == '__main__':
-    app.run(port=3004, debug=True)
