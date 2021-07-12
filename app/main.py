@@ -29,29 +29,56 @@ def Predict():
 
     inputs = pd.read_csv(dataPath, header=0,
                          infer_datetime_format=True, parse_dates=['datetime'], index_col=['datetime'])
-    scaler.fit(inputs)
-    inputs = scaler.transform(inputs)
+    inputsConsumation = inputs[["Global_active_power", ]]
+    inputsProduction = inputs[["Global_solar_production_power"]]
+    print(inputs)
+    print("-------------------------")
+    scaler.fit(inputsConsumation)
+
+    inputsConsumation = scaler.transform(inputsConsumation)
+    inputsProduction = scaler.transform(inputsProduction)
 
     n_features = 1
     n_input = len(inputs)
 
-    test_predictions = []
+    test_predictions_consummation = []
+    test_predictions_production = []
 
-    first_eval_batch = inputs
-    current_batch = first_eval_batch.reshape((1, n_input, n_features))
+    first_eval_batch_consummation = inputsConsumation
+    current_batch_consummation = first_eval_batch_consummation.reshape(
+        (1, n_input, n_features))
+    # ---------------------------------
+    first_eval_batch_production = inputsProduction
+    current_batch_production = first_eval_batch_production.reshape(
+        (1, n_input, n_features))
 
     for i in range(0, 7):
 
         # get the prediction value for the first batch
-        current_pred = model.predict(current_batch)[0]
+        current_pred_consummation = model.predict(
+            current_batch_consummation)[0]
+        current_pred_production = model.predict(current_batch_production)[0]
 
         # append the prediction into the array
-        test_predictions.append(current_pred)
+        test_predictions_consummation.append(current_pred_consummation)
+        test_predictions_production.append(current_pred_production)
 
         # use the prediction to update the batch and remove the first value
-        current_batch = np.append(current_batch[:, 1:, :], [
-                                  [current_pred]], axis=1)
+        current_batch_consummation = np.append(current_batch_consummation[:, 1:, :], [
+            [current_pred_consummation]], axis=1)
+        current_batch_production = np.append(current_batch_production[:, 1:, :], [
+            [current_pred_production]], axis=1)
 
-    test_predictions = scaler.inverse_transform(test_predictions)
-    test_predictions = [str(x[0]) for x in test_predictions]
-    return Response(json.dumps(test_predictions))
+    test_predictions_consummation = scaler.inverse_transform(
+        test_predictions_consummation)
+    test_predictions_consummation = [
+        str(x[0]) for x in test_predictions_consummation]
+
+    test_predictions_production = scaler.inverse_transform(
+        test_predictions_production)
+    test_predictions_production = [
+        str(x[0]) for x in test_predictions_production]
+
+    jsonResponse = [test_predictions_consummation, test_predictions_production]
+
+    return Response(json.dumps(jsonResponse))
